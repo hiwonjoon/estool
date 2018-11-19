@@ -73,6 +73,17 @@ def make_env(env_name, seed=-1, render_mode=False):
                 partial(Model,embedding_dims=128,steps=20),
                 '%s/%s/last.ckpt'%('../log',env_name)
             )
+        elif env_name.endswith('-SiameseBinary'):
+            from siamese_ranker import Model
+            from functools import partial
+            import train
+
+            env_name = env_name.replace('-SiameseBinary','')
+            env = ranker_env_wrapper.RankerEnvBinary(
+                env_name,
+                partial(Model,embedding_dims=128,steps=20),
+                '%s/%s/last.ckpt'%('../log',env_name)
+            )
         else:
             assert False, 'unsupported'
     else:

@@ -407,3 +407,13 @@ for env_name in mujoco_env_names:
              activation='passthru',
              noise_bias=0.0,
              output_noise=[False, False, True])
+
+    games[basename+'_siamese_binary_rr'] =\
+        Game(env_name=env_name+'-SiameseBinaryRelativeReward',
+             input_size=input_size,
+             output_size=output_size,
+             layers=[75, 15],
+             time_factor=1000,
+             activation='passthru',
+             noise_bias=0.0,
+             output_noise=[False, False, True])
