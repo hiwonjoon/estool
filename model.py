@@ -237,11 +237,6 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
 
     for t in range(max_episode_length):
 
-      if render_mode:
-        model.env.render("human")
-        if RENDER_DELAY:
-          time.sleep(0.01)
-
       if model.rnn_mode:
         model.update(obs, t)
         action = model.get_action()
@@ -254,6 +249,10 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
       prev_obs = obs
 
       obs, reward, done, info = model.env.step(action)
+      if render_mode:
+        model.env.render("human")
+        if RENDER_DELAY:
+          time.sleep(0.01)
 
       if is_relative_reward and train_mode == False:
           reward = info['true_reward']

@@ -78,11 +78,6 @@ def make_env(env_name, seed=-1, render_mode=False):
     else:
         env = gym.make(env_name)
 
-    if render_mode :
-        from gym import wrappers
-        env = wrappers.Monitor(env, directory='.', force=True)
-        env.render("human")
-
     if (seed >= 0):
         env.seed(seed)
     '''
