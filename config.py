@@ -346,3 +346,64 @@ robo_hopper = Game(env_name='RoboschoolHopper-v1',
   output_noise=[False, False, True],
 )
 games['robo_hopper'] = robo_hopper
+
+mujoco_env_names = (
+  'Ant-v2',
+  'HalfCheetah-v2',
+  'Hopper-v2',
+  'Humanoid-v2',
+  'Pusher-v2',
+  'Reacher-v2',
+  'Striker-v2',
+  'Swimmer-v2',
+  'Thrower-v2',
+  'Walker2d-v2',
+)
+
+for env_name in mujoco_env_names:
+    basename = env_name.split('-')[0].lower()
+
+    import gym
+    env = gym.make(env_name)
+    input_size = env.observation_space.shape[0]
+    output_size = env.action_space.shape[0]
+
+    games[basename] =\
+        Game(env_name=env_name,
+             input_size=input_size,
+             output_size=output_size,
+             layers=[75, 15],
+             time_factor=1000,
+             activation='passthru',
+             noise_bias=0.0,
+             output_noise=[False, False, True])
+
+    games[basename+'_gt_rr'] =\
+        Game(env_name=env_name+'-GTRelativeReward',
+             input_size=input_size,
+             output_size=output_size,
+             layers=[75, 15],
+             time_factor=1000,
+             activation='passthru',
+             noise_bias=0.0,
+             output_noise=[False, False, True])
+
+    games[basename+'_gt_binary_rr'] =\
+        Game(env_name=env_name+'-GTBinaryRelativeReward',
+             input_size=input_size,
+             output_size=output_size,
+             layers=[75, 15],
+             time_factor=1000,
+             activation='passthru',
+             noise_bias=0.0,
+             output_noise=[False, False, True])
+
+    games[basename+'_siamese_rr'] =\
+        Game(env_name=env_name+'-SiameseRelativeReward',
+             input_size=input_size,
+             output_size=output_size,
+             layers=[75, 15],
+             time_factor=1000,
+             activation='passthru',
+             noise_bias=0.0,
+             output_noise=[False, False, True])

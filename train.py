@@ -190,12 +190,18 @@ def decode_result_packet(packet):
     result.append([workers[i], jobs[i], fits[i], times[i]])
   return result
 
-def worker(weights, seed, train_mode_int=1, max_len=-1):
-
-  train_mode = (train_mode_int == 1)
+def worker(weights, seed, train_mode, max_len=-1):
   model.set_model_params(weights)
+
+  if train_mode == 2:
+    model.env.start_accumulate_trajs()
+
   reward_list, t_list = simulate(model,
-    train_mode=train_mode, render_mode=False, num_episode=num_episode, seed=seed, max_len=max_len)
+    train_mode=train_mode==1, render_mode=False, num_episode=num_episode, seed=seed, max_len=max_len)
+
+  if train_mode == 2:
+    model.env.end_accumulate_trajs()
+
   if batch_mode == 'min':
     reward = np.min(reward_list)
   else:
@@ -213,14 +219,22 @@ def slave():
     results = []
     for solution in solutions:
       worker_id, jobidx, seed, train_mode, max_len, weights = solution
-      assert (train_mode == 1 or train_mode == 0), str(train_mode)
+      assert (train_mode == 1 or train_mode == 0 or train_mode == 2), str(train_mode)
       worker_id = int(worker_id)
       possible_error = "work_id = " + str(worker_id) + " rank = " + str(rank)
       assert worker_id == rank, possible_error
       jobidx = int(jobidx)
       seed = int(seed)
-      fitness, timesteps = worker(weights, seed, train_mode, max_len)
+
+      if train_mode in [0,1]:
+        fitness, timesteps = worker(weights, seed, train_mode, max_len)
+      if train_mode == 2:
+        if len(results) == 0:
+          fitness, timesteps = worker(weights, seed, train_mode, max_len)
+        else:
+          fitness, timesteps = results[-1][2:4]
       results.append([worker_id, jobidx, fitness, timesteps])
+
     result_packet = encode_result_packet(results)
     assert len(result_packet) == RESULT_PACKET_SIZE
     comm.Send(result_packet, dest=0)
@@ -255,6 +269,20 @@ def receive_packets_from_slaves():
   assert check_sum == 0, check_sum
   return reward_list_total
 
+def update_baseline_traj(model_params, max_len=-1):
+  # duplicate model_params
+  solutions = []
+  for i in range(es.popsize):
+    solutions.append(np.copy(model_params))
+
+  seeds = np.array([0]*es.popsize)
+
+  packet_list = encode_solution_packets(seeds, solutions, train_mode=2, max_len=max_len)
+  send_packets_to_slaves(packet_list)
+  _ = receive_packets_from_slaves()
+
+  return
+
 def evaluate_batch(model_params, max_len=-1):
   # duplicate model_params
   solutions = []
@@ -288,6 +316,7 @@ def master():
   filename_best = filebase+'.best.json'
 
   model.make_env()
+  is_relative_reward = (model.env_name.find("RelativeReward") >= 0)
 
   t = 0
 
@@ -300,6 +329,10 @@ def master():
 
   while True:
     t += 1
+
+    if is_relative_reward and t % baseline_update_steps == 0:
+      model_params_quantized = np.array(es.current_param()).round(4)
+      update_baseline_traj(model_params_quantized, max_len=-1)
 
     solutions = es.ask()
 
@@ -376,11 +409,12 @@ def master():
 
 
 def main(args):
-  global gamename, optimizer, num_episode, eval_steps, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, cap_time_mode
+  global gamename, optimizer, num_episode, eval_steps, baseline_update_steps, num_worker, num_worker_trial, antithetic, seed_start, retrain_mode, cap_time_mode
   gamename = args.gamename
   optimizer = args.optimizer
   num_episode = args.num_episode
   eval_steps = args.eval_steps
+  baseline_update_steps = args.baseline_update_steps
   num_worker = args.num_worker
   num_worker_trial = args.num_worker_trial
   antithetic = (args.antithetic == 1)
@@ -427,6 +461,7 @@ if __name__ == "__main__":
   parser.add_argument('-o', '--optimizer', type=str, help='ses, pepg, openes, ga, cma.', default='cma')
   parser.add_argument('-e', '--num_episode', type=int, default=1, help='num episodes per trial')
   parser.add_argument('--eval_steps', type=int, default=25, help='evaluate every eval_steps step')
+  parser.add_argument('--baseline_update_steps', type=int, default=10, help='update baseline trajs for every (this) step')
   parser.add_argument('-n', '--num_worker', type=int, default=8)
   parser.add_argument('-t', '--num_worker_trial', type=int, help='trials per worker', default=4)
   parser.add_argument('--antithetic', type=int, default=1, help='set to 0 to disable antithetic sampling')

@@ -167,7 +167,7 @@ class Model:
         pointer += s
 
   def load_model(self, filename):
-    with open(filename) as f:    
+    with open(filename) as f:
       data = json.load(f)
     print('loading file %s' % (filename))
     self.data = data
@@ -200,6 +200,7 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
   t_list = []
 
   is_biped = (model.env_name.find("BipedalWalker") >= 0)
+  is_relative_reward = (model.env_name.find("RelativeReward") >= 0)
 
   orig_mode = True  # hack for bipedhard's reward augmentation during training (set to false for hack)
   if is_biped:
@@ -253,6 +254,9 @@ def simulate(model, train_mode=False, render_mode=True, num_episode=5, seed=-1, 
       prev_obs = obs
 
       obs, reward, done, info = model.env.step(action)
+
+      if is_relative_reward and train_mode == False:
+          reward = info['true_reward']
 
       if dct_compress_mode:
         obs = compress_input_dct(obs)
